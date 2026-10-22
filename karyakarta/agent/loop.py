@@ -10,6 +10,7 @@ fail; no model reply can turn a failed action into a success.
 from __future__ import annotations
 
 import asyncio
+import copy
 import logging
 import re
 from dataclasses import dataclass, field
@@ -25,7 +26,7 @@ from karyakarta.browser import executor
 from karyakarta.browser.perception import observe
 from karyakarta.browser.session import BrowserManager, BrowserStartError, TaskBrowser
 from karyakarta.config import Settings
-from karyakarta.models import ActionResult, AgentAction, Element, Observation
+from karyakarta.models import ACTION_SCHEMA, TEXT_KINDS, ActionResult, AgentAction, Element, Observation
 from karyakarta.safety.policy import Decision, PolicyContext, evaluate
 from karyakarta.safety.sensitive import mentions_secret
 from karyakarta.storage.db import Database
@@ -37,6 +38,18 @@ HISTORY_WINDOW = 8
 NO_EFFECT_HINT_AT = 2
 NO_EFFECT_FAIL_AT = 6
 MAX_DECLINES = 2
+
+
+def _narrow_schema(actions: list[str], marks: list[int]) -> dict:
+    """The strict reply format, narrowed so only valid choices are possible
+    (the runtime enforces it while the model writes, it cannot be ignored)."""
+    schema = copy.deepcopy(ACTION_SCHEMA)
+    schema["properties"]["action"]["enum"] = actions
+    if marks:
+        schema["properties"]["mark"] = {"type": "integer", "enum": sorted(marks)}
+    else:
+        schema["properties"].pop("mark")
+    return schema
 
 
 class TaskCancelled(Exception):
@@ -214,6 +227,7 @@ class AgentRunner:
         last_ok = True
         warned_injection = False
         total_failed_steps = 0
+        blocked: Optional[tuple] = None  # an action that worked but changed nothing: must not be repeated
 
         for idx in range(1, s.max_steps + 1):
             if control.cancel.is_set():
@@ -222,6 +236,8 @@ class AgentRunner:
             obs = await self._cancellable(self._observe(tb), control)
             if pending is not None:
                 no_effect, total_failed_steps = self._finalize(task_id, pending, obs, history, no_effect, total_failed_steps)
+                noop = "nothing visibly changed" in history[pending.history_index] or "view did not change" in history[pending.history_index]
+                blocked = (pending.action.action, pending.action.mark) if noop else None
                 pending = None
 
             ctx.injection_suspected = bool(obs.injection)
@@ -258,6 +274,11 @@ class AgentRunner:
                 self.bus.emit(task_id, "warning", f"The model gave an unusable answer: {exc}", {})
                 self.db.add_step(task_id, idx, url=obs.url, thought="", action="invalid", summary=str(exc), ok=0, verified=0)
                 continue
+
+            corrected = await self._correct(prompt, obs, action, blocked, control)
+            if corrected is not None:
+                action, reply = corrected
+                self.bus.emit(task_id, "notice", "The model's first choice was not usable, so it was asked again with only valid options.", {"step": idx})
 
             shot = self._save_shot(task_id, idx, obs.screenshot)
             element = obs.by_ref().get(action.mark) if action.mark is not None else None
@@ -390,18 +411,40 @@ class AgentRunner:
                 return await observe(tb.page)
             raise
 
-    async def _decide(self, prompt: str, obs: Observation):
+    async def _decide(self, prompt: str, obs: Observation, schema: Optional[dict] = None):
         last: Optional[ModelOutputError] = None
         for attempt in range(2):
             reply = await self.model.chat_json(
                 SYSTEM_PROMPT, prompt, [obs.screenshot] if obs.screenshot else [],
                 temperature=None if attempt == 0 else 0.5,
+                **({"schema": schema} if schema else {}),
             )
             try:
                 return parse_action(reply.content), reply
             except ModelOutputError as exc:
                 last = exc
         raise last  # type: ignore[misc]
+
+    async def _correct(self, prompt: str, obs: Observation, action: AgentAction, blocked: Optional[tuple], control: TaskControl):
+        """If the model picked something unusable or a pointless repeat, ask once
+        more with the reply format narrowed to valid choices only."""
+        elements = obs.by_ref()
+        element = elements.get(action.mark) if action.mark is not None else None
+        if action.action == "click" and element is not None and (element.kind in TEXT_KINDS or element.kind == "select"):
+            want = "select" if element.kind == "select" else "type"
+            marks = [e.ref for e in obs.elements if not e.readonly and ((e.kind == "select") == (want == "select")) and (e.kind in TEXT_KINDS or e.kind == "select")]
+            note = f"Your last answer was invalid: [{action.mark}] is a {element.kind} field. To fill a field you must use {want} with a value."
+            schema = _narrow_schema([want], marks)
+        elif blocked is not None and (action.action, action.mark) == blocked and action.mark is not None:
+            marks = [r for r in elements if r != action.mark]
+            note = "That exact action already worked but changed nothing, so do not repeat it. If the task is complete use done and put the result in value; otherwise choose a different element."
+            schema = _narrow_schema(["click", "type", "select", "done", "fail", "scroll"], marks) if marks else _narrow_schema(["done", "fail"], [])
+        else:
+            return None
+        try:
+            return await self._cancellable(self._decide(prompt + f"\nNOTE: {note}", obs, schema), control)
+        except ModelOutputError:
+            return None
 
     @staticmethod
     def _window(history: list[str]) -> list[str]:
