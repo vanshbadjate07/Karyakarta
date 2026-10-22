@@ -11,3 +11,5 @@ data/
 *.db
 *.db-wal
 *.db-shm
+.venv
+.venv.nosync/
