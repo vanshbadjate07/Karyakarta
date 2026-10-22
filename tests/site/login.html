@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Sign in</title><link rel="stylesheet" href="style.css"></head><body>
+<header><strong>Demo Site</strong><a href="index.html">Home</a></header>
+<main><h1>Sign in</h1>
+<form id="l"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="username">
+<label for="pw">Password</label><input id="pw" name="password" type="password" autocomplete="current-password">
+<button type="submit">Sign in</button></form><div id="welcome" class="result" hidden></div></main>
+<script>
+document.getElementById('l').addEventListener('submit',function(e){e.preventDefault();
+ var ok=document.getElementById('email').value==='demo@example.com'&&document.getElementById('pw').value==='secret123';
+ var w=document.getElementById('welcome');w.hidden=false;w.textContent=ok?'Welcome back, Demo':'Wrong email or password';});
+</script></body></html>

@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Library</title><link rel="stylesheet" href="style.css"></head><body>
+<header><strong>Demo Library</strong><a href="index.html">Home</a></header>
+<main><h1>Find a book</h1>
+<form id="s" role="search"><input type="search" name="q" id="q" placeholder="Search books" aria-label="Search books"><button type="submit">Search</button></form>
+<ul id="results" class="results"></ul></main>
+<script>
+var books=[["Dune","Frank Herbert","$12.99"],["Neuromancer","William Gibson","$9.50"],["Foundation","Isaac Asimov","$11.25"],["Hyperion","Dan Simmons","$10.75"],["Solaris","Stanislaw Lem","$8.40"],["Snow Crash","Neal Stephenson","$13.10"]];
+document.getElementById('s').addEventListener('submit',function(e){e.preventDefault();
+ var q=document.getElementById('q').value.toLowerCase();var ul=document.getElementById('results');ul.innerHTML='';
+ books.filter(function(b){return b[0].toLowerCase().indexOf(q)>=0||b[1].toLowerCase().indexOf(q)>=0}).forEach(function(b){
+  var li=document.createElement('li');li.innerHTML='<strong>'+b[0]+'</strong> by '+b[1]+' &mdash; '+b[2];ul.appendChild(li);});
+ if(!ul.children.length){ul.innerHTML='<li>No books found</li>';}});
+</script></body></html>

@@ -1,0 +1,13 @@
+body{font:16px/1.5 system-ui,sans-serif;margin:0;background:#f6f7f9;color:#1a1d23}
+header{background:#1f2a44;color:#fff;padding:14px 28px;display:flex;gap:24px;align-items:center}
+header a{color:#cfd8ff;text-decoration:none}
+main{max-width:640px;margin:32px auto;background:#fff;padding:28px 32px;border-radius:10px;box-shadow:0 1px 4px #0002}
+label{display:block;margin:14px 0 4px;font-weight:600}
+input[type=text],input[type=email],input[type=password],input[type=search],select,textarea{width:100%;padding:9px 10px;border:1px solid #b9bfcc;border-radius:6px;font:inherit;box-sizing:border-box}
+button{margin-top:18px;padding:10px 20px;background:#2f6fed;color:#fff;border:0;border-radius:6px;font:inherit;cursor:pointer}
+.result{margin-top:22px;padding:12px;background:#e6f6ec;border-radius:6px}
+.check{display:flex;align-items:center;gap:10px;margin-top:16px}
+.check input{position:absolute;opacity:0;width:1px;height:1px}
+.check .box{width:20px;height:20px;border:2px solid #2f6fed;border-radius:4px;display:inline-block}
+.check input:checked+.box{background:#2f6fed}
+ul.results{list-style:none;padding:0}ul.results li{padding:10px 0;border-bottom:1px solid #e3e6ec}

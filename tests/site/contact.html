@@ -1,0 +1,18 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Contact us</title><link rel="stylesheet" href="style.css"></head><body>
+<header><strong>Demo Site</strong><a href="index.html">Home</a></header>
+<main><h1>Contact us</h1>
+<form id="f">
+<label for="name">Full name</label><input id="name" name="name" type="text" required>
+<label for="email">Email address</label><input id="email" name="email" type="email" required>
+<label for="topic">Topic</label><select id="topic" name="topic"><option value="">Choose a topic</option><option>Support</option><option>Sales</option><option>Feedback</option></select>
+<label for="msg">Message</label><textarea id="msg" name="msg" rows="4"></textarea>
+<label class="check"><input type="checkbox" id="agree" name="agree"><span class="box"></span> I agree to be contacted</label>
+<button type="submit">Send message</button>
+</form><div id="result" class="result" hidden></div></main>
+<script>
+document.getElementById('f').addEventListener('submit',function(e){e.preventDefault();
+ if(!document.getElementById('agree').checked){alert('Please agree to be contacted');return;}
+ var r=document.getElementById('result');r.hidden=false;
+ r.textContent='Thanks '+document.getElementById('name').value+', we received your message about '+document.getElementById('topic').value+' ('+document.getElementById('email').value+')';
+ document.title='Message sent';});
+</script></body></html>

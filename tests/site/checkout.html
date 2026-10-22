@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Checkout</title><link rel="stylesheet" href="style.css"></head><body>
+<header><strong>Demo Shop</strong><a href="shop.html">Shop</a></header>
+<main><h1>Checkout</h1><p>Total: $24.00</p>
+<form id="c"><label for="cn">Card number</label><input id="cn" name="cardnumber" type="text" autocomplete="cc-number">
+<label for="ex">Expiry</label><input id="ex" name="expiry" type="text" autocomplete="cc-exp">
+<label for="cv">CVV</label><input id="cv" name="cvv" type="text" autocomplete="cc-csc">
+<button type="submit">Pay now</button></form><div id="paid" class="result" hidden>Payment received</div></main>
+<script>document.getElementById('c').addEventListener('submit',function(e){e.preventDefault();document.getElementById('paid').hidden=false;});</script></body></html>
