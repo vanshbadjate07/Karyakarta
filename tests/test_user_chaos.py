@@ -44,7 +44,14 @@ def test_a_flood_of_tasks_is_queued_then_refused_politely(settings, site):
         codes = [c.post("/api/tasks", json={"instruction": f"task number {i}", "start_url": f"{site}/contact.html"}, headers=H).status_code for i in range(25)]
         assert codes.count(201) >= 20 and 429 in codes
         assert c.get("/api/system/status", headers=H).status_code == 200  # still responsive
-        for t in c.get("/api/tasks", headers=H).json():
+        first = min(t["id"] for t in c.get("/api/tasks", headers=H).json())
+        deadline = time.monotonic() + 90
+        while time.monotonic() < deadline:  # let the first task settle at its approval prompt
+            if any(e["kind"] == "confirmation_request" for e in c.get(f"/api/tasks/{first}/events", headers=H).json()):
+                break
+            time.sleep(0.2)
+        # newest first, so waiting tasks are cancelled before the worker can start them
+        for t in sorted(c.get("/api/tasks", headers=H).json(), key=lambda t: -t["id"]):
             c.post(f"/api/tasks/{t['id']}/cancel", headers=H)
 
 

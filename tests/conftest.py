@@ -82,10 +82,17 @@ class ScriptedModel:
 
     @staticmethod
     def _mark_for(prompt: str, label: str) -> int:
+        found = []
         for line in prompt.splitlines():
             match = re.match(r"\[(\d+)\] (\S+)(?: \"(.*?)\")?", line)
-            if match and match.group(3) and label.lower() in match.group(3).lower():
-                return int(match.group(1))
+            if match and match.group(3):
+                found.append((int(match.group(1)), match.group(3)))
+        for ref, text in found:  # an exact label wins over a partial match
+            if text.lower() == label.lower():
+                return ref
+        for ref, text in found:
+            if label.lower() in text.lower():
+                return ref
         raise AssertionError(f"no element labelled {label!r} in prompt:\n{prompt}")
 
     async def status(self):
