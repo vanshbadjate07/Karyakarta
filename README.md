@@ -13,17 +13,18 @@ Describe a task in plain language. Karyakarta opens a real browser, works out th
 1. [What it does](#what-it-does)
 2. [Why it is different](#why-it-is-different)
 3. [How it works](#how-it-works)
-4. [Safety model](#safety-model)
-5. [Architecture and repository layout](#architecture-and-repository-layout)
-6. [Tech stack](#tech-stack)
-7. [Getting started](#getting-started)
-8. [Using the local service](#using-the-local-service)
-9. [Testing](#testing)
-10. [Project status and roadmap](#project-status-and-roadmap)
-11. [Branch workflow](#branch-workflow)
-12. [Research background](#research-background)
-13. [Limitations](#limitations)
-14. [License](#license)
+4. [The desktop app](#the-desktop-app)
+5. [Safety model](#safety-model)
+6. [Architecture and repository layout](#architecture-and-repository-layout)
+7. [Tech stack](#tech-stack)
+8. [Getting started](#getting-started)
+9. [Using the local service](#using-the-local-service)
+10. [Testing](#testing)
+11. [Project status and roadmap](#project-status-and-roadmap)
+12. [Branch workflow](#branch-workflow)
+13. [Research background](#research-background)
+14. [Limitations](#limitations)
+15. [License](#license)
 
 ---
 
@@ -67,6 +68,20 @@ Planned on top of this core (see the [roadmap](#project-status-and-roadmap)): a 
 6. **Repeat** until the model reports done and its last action did not fail, the user cancels, or a limit is reached.
 
 Failures are loud and specific: if the local model is not running, the model is missing, or the browser cannot start, the task stops with a message that says what to do.
+
+## The desktop app
+
+An Electron and React app, light and minimal, built around one idea: you should always see what the agent is doing and stay in control.
+
+- **Home:** describe a task in plain words, optionally start on a website, or pick a suggestion.
+- **Work view:** a timeline of every step (what it did, why, a "Verified" tag, how long the AI took) beside a live view of the page the agent is looking at, with the same numbered marks the model sees. Finished tasks can be replayed step by step.
+- **Approvals in place:** when a step needs your yes, a card appears right in the timeline with the exact action and the reason it was flagged.
+- **Secure entry:** passwords, codes and card numbers go into a masked box and straight to the website. They are not stored and the AI never sees them.
+- **History:** tasks are grouped by day and can be reopened, replayed, re-run or deleted.
+- **Setup check:** shows whether the local AI engine, the model and the browser component are ready, and downloads the model with progress.
+- **Resilient connection:** the live stream reconnects by itself and falls back to polling.
+
+The page itself has no access to Node. The desktop shell starts the service on a random port with a one-time secret token, hands both to the page through a narrow bridge, blocks other navigation, refuses browser permissions, and stops the service on quit.
 
 ## Safety model
 
@@ -117,17 +132,21 @@ The desktop app talks to the local service over HTTP and a WebSocket. Everything
 | Model | Qwen3-VL 2B Instruct (Apache-2.0), served locally by Ollama |
 | Backend | Python 3.12, FastAPI, WebSocket, SQLite |
 | Browser control | Playwright (real Chromium, persistent profile) |
-| Frontend | Electron, React, TypeScript |
-| Testing | pytest, pytest-asyncio, real Chromium against local test sites |
+| Frontend | Electron, React, TypeScript, Vite |
+| Testing | pytest and real Chromium against local test sites (backend); Vitest and React Testing Library (app) |
 | Planned | QLoRA fine-tuning (Hugging Face PEFT), MCP, SQLite FTS5 + sqlite-vec for RAG, BrowserGym for standard benchmarks |
 
 Everything is free and open source.
 
 ## Getting started
 
+### Platforms
+
+Karyakarta is built for **Windows and macOS** from the start: paths and data folders use each system's own conventions, the desktop shell starts and stops the service the right way on each, and the local AI engine and browser component both exist for both. The automated tests of both applications run on Windows, macOS and Linux on every push (GitHub Actions). The installers for both systems come in the last milestone.
+
 ### Requirements
 
-- macOS or Windows
+- Windows 10 or later, or macOS
 - Python 3.12 and [uv](https://docs.astral.sh/uv/)
 - [Ollama](https://ollama.com) installed and running
 - About 2 GB of free disk space for the model, plus the browser component
@@ -156,7 +175,14 @@ Useful settings (environment variables, all optional):
 
 ### Frontend
 
-See the `Frontend` branch for the desktop app and its own instructions.
+```bash
+cd Frontend
+npm install
+npm run build
+npm start        # opens the desktop app; it starts the service from ../Backend for you
+```
+
+See the `Frontend` branch README for developing the interface in a browser and for all settings.
 
 ## Using the local service
 
@@ -196,6 +222,8 @@ The fast suite runs a real Chromium against local test websites (forms, login, s
 - closing the browser window mid-task, quitting during start-up, rapid task floods, and unusual task text (Hindi, emoji, markup, SQL-like text),
 - access control: token required, foreign host headers refused, other websites get no cross-origin permission.
 
+Both applications' fast suites also run on Windows, macOS and Linux in GitHub Actions on every push.
+
 The **live** suite runs the real local model on the same sites and judges success by code on the final page state, never by the agent's own claim.
 
 ## Project status and roadmap
@@ -205,8 +233,8 @@ Work is split into milestones, each verified before the next starts.
 | # | Milestone | Status |
 |---|---|---|
 | 1 | **Backend core:** local model, browser layer, agent loop, policy firewall, storage, local service, tests | **Done** |
-| 2 | **Desktop app:** task screen, live log, confirmation and secret prompts, history and replay, first-run setup | Next |
-| 3 | **Reliability hardening:** iframes, popups and banners, multi-tab, recovery, a wider site test matrix, speed tuning | Planned |
+| 2 | **Desktop app:** work view with live page view, approvals and secure entry, history and replay, setup check | **Done** |
+| 3 | **Reliability hardening (next):** iframes, popups and banners, multi-tab, recovery, a wider site test matrix, speed tuning | Planned |
 | 4 | **Evaluation harness:** replayable benchmark with code-checked success, standard benchmarks, baseline numbers | Planned |
 | 5 | **Data and fine-tuning:** training data, QLoRA fine-tuning, verified self-improvement, ablations | Planned |
 | 6 | **MCP and safety suite:** MCP server, injection attack suite and measured results | Planned |
@@ -244,16 +272,18 @@ Real local model (Qwen3-VL 2B) on six everyday flows, success judged by code on 
 
 Typical speed: about 3 to 7 seconds per step after the model is loaded. These are the first honest numbers; improving them is the job of the reliability, evaluation and fine-tuning milestones.
 
+Desktop app: **24 tests pass** (event logic, timeline, service client, approval and secret prompts, task composer), the real Electron app passes a start-to-finish smoke test (service starts on a random port, interface loads, bridge works, no Node access leaks into the page), and real tasks were driven through the interface with the real local model: a search-and-read task completed, a payment task stopped for approval, and a login task stopped for approval when the model tried to submit before a password was entered.
+
 ## Limitations
 
-Stated plainly, as of Milestone 1:
+Stated plainly, as of Milestone 2:
 
 - A 2-billion-parameter model is small. It follows simple multi-step flows but can pick the wrong action, so the runtime corrects it with validation and feedback. Reliability work, benchmarks and fine-tuning are the next milestones.
 - Content inside iframes is not read yet.
 - File uploads and downloads are blocked, not handled.
 - CAPTCHAs are never solved: the agent stops and hands control back to the user.
 - One task runs at a time.
-- The desktop app is not part of this milestone.
+- The desktop app runs from source for now. Installers for Windows and macOS come in the last milestone.
 
 ## License
 
