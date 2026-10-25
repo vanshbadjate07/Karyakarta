@@ -1,0 +1,20 @@
+name: Backend tests
+
+on:
+  push:
+    branches: [Backend, testing, main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --python 3.12
+      - run: uv run playwright install --with-deps chromium
+      - run: uv run pytest -q
