@@ -74,6 +74,8 @@ async def test_form_task_completes_after_the_user_approves_the_submit(started, d
     assert [s["action"] for s in steps] == ["type", "type", "select", "click", "click", "done"]
     assert all(s["ok"] for s in steps)
     assert all(s["screenshot"] for s in steps if s["action"] != "done" or True)
+    thought = event_of(db, task_id, "thought")
+    assert thought["detail"]["screenshot"].endswith(".jpg") and thought["detail"]["url"].endswith("contact.html")
     kinds = [e["kind"] for e in db.list_events(task_id)]
     assert {"task_started", "observe", "thought", "policy", "action", "step_result", "confirmation_request", "task_complete"} <= set(kinds)
 

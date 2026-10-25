@@ -284,7 +284,7 @@ class AgentRunner:
             element = obs.by_ref().get(action.mark) if action.mark is not None else None
             label = self._label(action, element)
             desc = self._describe(action, element)
-            self.bus.emit(task_id, "thought", action.thought or "(no explanation)", {"step": idx})
+            self.bus.emit(task_id, "thought", action.thought or "(no explanation)", {"step": idx, "screenshot": shot, "url": obs.url})
 
             problem = validate_action(action, obs)
             if problem is None and action.action == "ask_user" and mentions_secret(action.value or ""):
